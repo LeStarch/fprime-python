@@ -1,0 +1,6 @@
+[submodule "fprime"]
+	path = fprime
+	url = https://github.com/nasa/fprime.git
+[submodule "fprime-python/pybind11"]
+	path = fprime-python/pybind11
+	url = https://github.com/pybind/pybind11.git

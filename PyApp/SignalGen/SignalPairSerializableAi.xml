@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+SignalArray:
+
+An example signal array that downlinks the last 10 samples generated, as an array type.
+-->
+<serializable name="SignalPair" namespace="PyApp">
+    <import_enum_type>PyApp/SignalGen/SignalTypeEnumAi.xml</import_enum_type>
+    <import_array_type>PyApp/SignalGen/SignalSetArrayAi.xml</import_array_type>
+    <members>
+        <member type="F32" name="time" format="%f"/>
+        <member type="F32" name="value" format="%f" />
+    </members>
+</serializable>
