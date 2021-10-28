@@ -12,12 +12,14 @@ set(SOURCE_FILES
   "${CMAKE_CURRENT_LIST_DIR}/SignalPairSetArrayAi.xml"
   "${CMAKE_CURRENT_LIST_DIR}/SignalInfoSerializableAi.xml"
   "${CMAKE_CURRENT_LIST_DIR}/SignalGenComponentAi.xml"
-  "${CMAKE_CURRENT_LIST_DIR}/SignalGen.cpp"
+  #"${CMAKE_CURRENT_LIST_DIR}/PyAppPyBind.cpp"
+  #"${CMAKE_CURRENT_LIST_DIR}/SignalGen.cpp"
 )
 set(MOD_DEPS
-    fprime-python/PyInit
+    fprime-python/FprimePy
 )
 register_fprime_module()
+register_python_component("${CMAKE_CURRENT_LIST_DIR}/SignalGenComponentAi.xml" "${CMAKE_CURRENT_LIST_DIR}/SignalGen.py")
 #get_module_name("${CMAKE_CURRENT_LIST_DIR}")
 #target_link_libraries("${MODULE_NAME}" pybind11::embed pybind11::module)
 

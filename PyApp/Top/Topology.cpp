@@ -147,7 +147,7 @@ void constructApp(U32 port_number, char* hostname) {
     health.init(25,0);
 
     SG1.init(10,0);
-    SG2.init(10,1);
+    //SG2.init(10,1);
 
     downlink.setup(framing);
     uplink.setup(deframing);
@@ -163,7 +163,7 @@ void constructApp(U32 port_number, char* hostname) {
     fileDownlink.regCommands();
     fileManager.regCommands();
     SG1.regCommands();
-    SG2.regCommands();
+    //SG2.regCommands();
     health.regCommands();
     pktTlm.regCommands();
 

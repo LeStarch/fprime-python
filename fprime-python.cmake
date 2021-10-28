@@ -1,1 +1,1 @@
-add_fprime_subdirectory("${CMAKE_CURRENT_LIST_DIR}/fprime-python/PyInit")
+add_fprime_subdirectory("${CMAKE_CURRENT_LIST_DIR}/fprime-python/FprimePy")

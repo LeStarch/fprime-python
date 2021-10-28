@@ -26,7 +26,7 @@
 
 #include <Drv/TcpClient/TcpClientComponentImpl.hpp>
 
-#include <PyApp/SignalGen/SignalGen.hpp>
+#include <PyBindAc.hpp>
 
 void constructPyAppArchitecture(void);
 void constructApp(U32 port_number, char* hostname);

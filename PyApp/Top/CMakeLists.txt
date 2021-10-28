@@ -18,6 +18,7 @@ set(MOD_DEPS
     # Communication Implementations
     Drv/Udp
     Drv/TcpClient
+    pybind
 )
 register_fprime_executable()
 #get_module_name("${CMAKE_CURRENT_LIST_DIR}")

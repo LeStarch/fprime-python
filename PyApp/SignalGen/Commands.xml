@@ -9,7 +9,7 @@
 ======================================================================-->
 
 <commands>
-  <!--command kind="async" opcode="0x00" mnemonic="SignalGen_Settings">
+  <command kind="async" opcode="0x00" mnemonic="SignalGen_Settings">
     <comment>Signal Generator Settings</comment>
     <args>
       <arg 
@@ -29,7 +29,7 @@
         name="SigType">
       </arg>
     </args>
-  </command-->
+  </command>
   <command kind="async" opcode="1" mnemonic="SignalGen_Toggle">
     <comment>Toggle Signal Generator On/Off.</comment>
   </command>

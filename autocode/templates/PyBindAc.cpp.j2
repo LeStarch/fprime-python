@@ -1,0 +1,79 @@
+// ======================================================================
+// \title  PyBindAc.cpp
+// \brief  autocode python binding implementation
+// ======================================================================
+{% for ns, types in namespaces.items() %}
+{% for item in types %}
+#include <{{ item.header_path }}>
+{%- endfor %}
+{%- endfor %}
+#include <PyBindAc.hpp>
+
+{% for ns, types in namespaces.items() %}
+{% for item in types -%}
+{% set cpp_class_name = item.ns + "::" + item.name -%}
+{% if item.type == "Component" %}
+namespace {{ item.ns }} {
+    /**
+     * {{ item.name }}: c++ function implementations that delegate across to the python side.
+     */
+    {{ item.name }} ::{{ item.name }}(const char* name) : {{ item.name }}ComponentBase(name) {}
+
+    // init function loads python code
+    void {{ item.name }} ::init(const NATIVE_INT_TYPE queueDepth, const NATIVE_INT_TYPE instance) {
+        py::module_ module = py::module_::import("{{ item.name }}");
+        this->m_self = module.attr("{{ item.name }}")();
+        this->m_self.attr("_init_ac")(this);
+        SignalGenComponentBase::init(queueDepth, instance);
+    }
+
+    {{ item.name }} ::~{{ item.name }}() {}
+
+    {% for in_port in item.in_ports -%}
+    void {{ item.name }} ::{{ in_port.name }}_handler({{ ",".join(in_port.arg_full_texts) }}) {
+        m_self.attr("{{ in_port.name }}_handler")({{ ",".join(in_port.arg_names) }});
+    }
+    {% endfor %}
+    {% for command in item.commands -%}
+    void {{ item.name }} ::{{ command.name }}_cmdHandler({{ ", ".join(command.arg_full_texts) }}) {
+        m_self.attr("{{ command.name }}")({{ ", ".join(command.arg_names) }});
+    }
+    {% endfor %}
+}; // Namespace {{ item.ns }}
+{% endif %}
+{% endfor %}
+
+PYBIND11_EMBEDDED_MODULE({{ ns.replace("::", ".") }}, m) {
+{% for item in types -%}
+    {% set cpp_class_name = item.ns + "::" + item.name -%}
+    {% if item.type == "Enum" %}
+    py::enum_<{{ cpp_class_name }}::t>(m, "{{ item.name }}")
+        {% for val in item.vals -%}
+            .value("{{ val }}", {{ item.ns }}::{{ item.name }}::{{ val }})
+        {% endfor -%}
+        .export_values();
+    {% elif item.type == "Serializable" %}
+    py::class_<{{ cpp_class_name }}>(m, "{{ item.name }}")
+        .def(py::init<{{ ",".join(item.member_list.values()) }}>())
+        {%- for name in item.member_list.keys() %}
+            .def("set{{ name }}", &{{ cpp_class_name }}::set{{ name }})
+            .def("get{{ name }}", &{{ cpp_class_name }}::get{{ name }})
+        {%- endfor -%};
+    {% elif item.type == "Component" %}
+    py::class_<{{ cpp_class_name }}>(m, "{{ item.name }}")
+        {% if item.commands %}
+        .def("cmdResponse_out", &PyApp::{{ item.name }}::cmdResponse_out)
+        {%- endif -%}
+        {% for out_port in item.out_ports %}
+        .def("{{ out_port.name }}", &PyApp::{{ item.name }}::{{ out_port.name }})
+        {%- endfor -%}
+        {% for event in item.events %}
+        .def("log_{{ event.severity }}_{{ event.name }}", &PyApp::{{ item.name }}::log_{{ event.severity }}_{{ event.name }})
+        {%- endfor -%}
+        {% for channel in item.channels %}
+        .def("tlmWrite_{{ channel.name }}", &PyApp::{{ item.name }}::tlmWrite_{{ channel.name }},py::arg("arg"), py::arg("_tlmTime") = Fw::Time())
+        {%- endfor -%};
+    {% endif %}
+{% endfor %}
+}
+{%- endfor %}

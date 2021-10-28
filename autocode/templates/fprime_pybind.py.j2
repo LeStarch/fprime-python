@@ -1,0 +1,42 @@
+""" WARNING WARNING THIS IS AN AUTOCODED FILE WARNING WARNING """
+import Fw
+{% for ns, types in namespaces.items() %}
+import {{ ns }}
+{% endfor %}
+
+{% for ns, types in namespaces.items() %}
+{% for item in types -%}
+{% if item.type == "Component" %}
+
+class {{ item.name }}Base(object):
+    """ Autocoded base for the python code """
+
+    def _init_ac(self, this):
+        """ Initialize 'this' to redirect into the CPP """
+        self.this = this
+
+    {% if item.commands %}
+    def cmdResponse_out(self, opcode: int, cmd_seq: int, response: Fw.CommandResponse):
+        """ Command response handler """
+        self.this.cmdResponse_out(opcode, cmd_seq, response)
+    {%- endif %}
+    {% for out_port in item.out_ports -%}
+    def {{ output_port.name }}_out({{ ", ".join(["self"] + out_port.arg_names) }}):
+        self.this.{{ output_port.name }}_out({{ ",".join(out_port.arg_names) }})
+
+    {% endfor %}
+    {% for channel in item.channels -%}
+    def tlmWrite_{{ channel.name }}(self, value):
+        self.this.tlmWrite_{{ channel.name }}(value)
+
+    {% endfor %}
+    {% for event in item.events -%}
+    def log_{{ event.severity }}_{{ event.name }}({{ ", ".join(["self"] + event.arg_names) }}):
+        self.this.log_{{ event.severity }}_{{ event.name }}({{ ",".join(event.arg_names) }})
+
+    {% endfor %}
+{% endif %}
+{% endfor %}
+{% endfor %}
+
+

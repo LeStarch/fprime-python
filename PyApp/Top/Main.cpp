@@ -3,6 +3,7 @@
 #include <ctype.h>
 
 #include <PyApp/Top/Components.hpp>
+#include <fprime-python/FprimePy/FprimePy.hpp>
 
 void print_usage(const char* app) {
     (void) printf("Usage: ./%s [options]\n-p\tport_number\n-a\thostname/IP address\n",app);
@@ -44,7 +45,7 @@ int main(int argc, char* argv[]) {
     char *hostname;
     option = 0;
     hostname = NULL;
-
+    FprimePy::initialize();
     while ((option = getopt(argc, argv, "hp:a:")) != -1){
         switch(option) {
             case 'h':
@@ -66,7 +67,6 @@ int main(int argc, char* argv[]) {
     }
 
     (void) printf("Hit Ctrl-C to quit\n");
-
     constructApp(port_number, hostname);
 
     // register signal handlers to exit program
@@ -86,6 +86,6 @@ int main(int argc, char* argv[]) {
     Os::Task::delay(1000);
 
     (void) printf("Exiting...\n");
-
+    FprimePy::destroy();
     return 0;
 }

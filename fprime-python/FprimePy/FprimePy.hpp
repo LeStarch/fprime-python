@@ -9,4 +9,11 @@
 #include "pybind11/embed.h"
 namespace py = pybind11;
 
+
+namespace FprimePy {
+    // Initialize the python environment
+    void initialize();
+    
+    void destroy();
+}
 #endif  // PYAPP_PYINIT_HPP

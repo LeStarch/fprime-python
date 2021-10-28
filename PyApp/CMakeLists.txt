@@ -20,6 +20,7 @@
 ##
 project(PyApp C CXX)
 cmake_minimum_required(VERSION 3.5)
+add_compile_options(-g)
 ##
 # Section 2: F prime Core
 #
@@ -28,6 +29,8 @@ cmake_minimum_required(VERSION 3.5)
 # colliding with deployment specific items.
 ##
 include("${FPRIME_FRAMEWORK_PATH}/cmake/FPrime.cmake")
+register_fprime_target("${CMAKE_CURRENT_LIST_DIR}/../cmake/target/pybind.cmake")
+
 # NOTE: register custom targets between these two lines
 include("${FPRIME_FRAMEWORK_PATH}/cmake/FPrime-Code.cmake")
 
