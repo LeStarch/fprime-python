@@ -79,12 +79,17 @@ endfunction(add_global_target)
 function(register_python_component AI_XML PY_IMPL)
     # Get input variables MODULE_NAME and TGT_MOD_DEPS from the mod deps applied to the target
     get_module_name("${CMAKE_CURRENT_LIST_DIR}")
-    get_property(TGT_MOD_DEPS TARGET "${MODULE_NAME}" PROPERTY MOD_DEPS)
+
 
     # Check that the user supplied items in the right order
+    if (NOT TARGET ${MODULE_NAME})
+        message(FATAL_ERROR "register_python_component must be called after register_fprime_module in CMakeLists.txt")
+    endif()
+    get_target_property(TGT_MOD_DEPS "${MODULE_NAME}" MOD_DEPS)
     if (NOT TGT_MOD_DEPS)
         message(FATAL_ERROR "register_python_component must be called after register_fprime_module in CMakeLists.txt")
     endif()
+    get_property(TGT_MOD_DEPS TARGET "${MODULE_NAME}" PROPERTY MOD_DEPS)
     # Setup cache properties that eill be used later
     set_property(TARGET pybind APPEND PROPERTY PYTHON_BINDINGS ${AI_XML})
     set_property(TARGET pybind APPEND PROPERTY PYTHON_INSTALLS ${PY_IMPL})
