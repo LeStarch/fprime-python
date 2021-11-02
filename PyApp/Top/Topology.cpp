@@ -4,7 +4,7 @@
 #include <Fw/Logger/Logger.hpp>
 #include <Os/Log.hpp>
 #include <Fw/Types/MallocAllocator.hpp>
-//#include <fprime-python/PyInit/PyInit.hpp>
+#include <fprime-python/FprimePy/FprimePy.hpp>
 
 #include <Svc/FramingProtocol/FprimeProtocol.hpp>
 
@@ -224,6 +224,7 @@ void constructApp(U32 port_number, char* hostname) {
         comm.configure(hostname, port_number);
         comm.startSocketTask(name, 100, 10 * 1024);
     }
+    //FprimePy::release_startup();
     while (1) {
         // call interrupt to emulate a clock
         Svc::TimerVal timer;

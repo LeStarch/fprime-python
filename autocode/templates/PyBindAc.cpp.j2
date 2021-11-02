@@ -21,6 +21,7 @@ namespace {{ item.ns }} {
 
     // init function loads python code
     void {{ item.name }} ::init(const NATIVE_INT_TYPE queueDepth, const NATIVE_INT_TYPE instance) {
+        py::gil_scoped_acquire acquired{};
         py::module_ module = py::module_::import("{{ item.name }}");
         this->m_self = module.attr("{{ item.name }}")();
         this->m_self.attr("_init_ac")(this);
@@ -31,12 +32,14 @@ namespace {{ item.ns }} {
 
     {% for in_port in item.in_ports -%}
     void {{ item.name }} ::{{ in_port.name }}_handler({{ ",".join(in_port.arg_full_texts) }}) {
+        py::gil_scoped_acquire acquired{};
         m_self.attr("{{ in_port.name }}_handler")({{ ",".join(in_port.arg_names) }});
     }
     {% endfor %}
     {% for command in item.commands -%}
     void {{ item.name }} ::{{ command.name }}_cmdHandler({{ ", ".join(command.arg_full_texts) }}) {
-        m_self.attr("{{ command.name }}")({{ ", ".join(command.arg_names) }});
+        py::gil_scoped_acquire acquired{};
+        m_self.attr("{{ command.name }}_cmdHandler")({{ ", ".join(command.arg_names) }});
     }
     {% endfor %}
 }; // Namespace {{ item.ns }}
@@ -47,13 +50,29 @@ PYBIND11_EMBEDDED_MODULE({{ ns.replace("::", ".") }}, m) {
 {% for item in types -%}
     {% set cpp_class_name = item.ns + "::" + item.name -%}
     {% if item.type == "Enum" %}
-    py::enum_<{{ cpp_class_name }}::t>(m, "{{ item.name }}")
+    py::class_<{{ cpp_class_name }}> _{{ item.name.lower() }}(m, "{{ item.name }}");
+    _{{ item.name.lower() }}.def(py::init<>());
+    _{{ item.name.lower() }}.def(py::init<{{ cpp_class_name }}::t>());
+
+    py::enum_<{{ cpp_class_name }}::t>(_{{ item.name.lower() }}, "t")
         {% for val in item.vals -%}
             .value("{{ val }}", {{ item.ns }}::{{ item.name }}::{{ val }})
         {% endfor -%}
         .export_values();
+    {% elif item.type == "Array" %}
+    py::class_<{{ cpp_class_name }}> _{{ item.name.lower() }}(m, "{{ item.name }}");
+    _{{ item.name.lower() }}.def(py::init<>());
+    _{{ item.name.lower() }}.def(py::init<{{ ",".join([item.elem_type] * item.size) }}>());
+    _{{ item.name.lower() }}.def("__getitem__", [](const {{ cpp_class_name }} &a, int b) {
+                return a[b];
+            }, py::is_operator());
+    _{{ item.name.lower() }}.def("__setitem__", []({{ cpp_class_name }} &a, int b, {{ item.elem_type }} c) {
+                a[b] = c;
+            }, py::is_operator());
+    _{{ item.name.lower() }}.attr("size") = py::int_({{ item.size }});
     {% elif item.type == "Serializable" %}
     py::class_<{{ cpp_class_name }}>(m, "{{ item.name }}")
+        .def(py::init<>())
         .def(py::init<{{ ",".join(item.member_list.values()) }}>())
         {%- for name in item.member_list.keys() %}
             .def("set{{ name }}", &{{ cpp_class_name }}::set{{ name }})
@@ -61,6 +80,7 @@ PYBIND11_EMBEDDED_MODULE({{ ns.replace("::", ".") }}, m) {
         {%- endfor -%};
     {% elif item.type == "Component" %}
     py::class_<{{ cpp_class_name }}>(m, "{{ item.name }}")
+        .def("doDispatch", &PyApp::{{ item.name }}::doDispatch)
         {% if item.commands %}
         .def("cmdResponse_out", &PyApp::{{ item.name }}::cmdResponse_out)
         {%- endif -%}

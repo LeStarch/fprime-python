@@ -9,7 +9,7 @@
 ======================================================================-->
 
 <commands>
-  <command kind="async" opcode="0x00" mnemonic="SignalGen_Settings">
+  <command kind="async" opcode="0x00" mnemonic="Settings">
     <comment>Signal Generator Settings</comment>
     <args>
       <arg 
@@ -21,16 +21,12 @@
         name="Amplitude">
       </arg>
       <arg
-        type="F32"
-        name="Phase">
-      </arg>
-      <arg
         type="PyApp::SignalType"
         name="SigType">
       </arg>
     </args>
   </command>
-  <command kind="async" opcode="1" mnemonic="SignalGen_Toggle">
+  <command kind="async" opcode="1" mnemonic="Toggle">
     <comment>Toggle Signal Generator On/Off.</comment>
   </command>
 </commands>

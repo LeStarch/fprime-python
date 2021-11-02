@@ -33,6 +33,10 @@ namespace {{ item.ns }} {
         void {{ command.name }}_cmdHandler({{ ", ".join(command.arg_full_texts) }});
         {% endfor %}
       public:
+        {% if item.kind != "passive" %}
+        // doDispatch binding
+        using {{ item.name }}ComponentBase::doDispatch;
+        {% endif %}
         // Changing access modifiers for command response
         {% if item.commands %}
         using {{ item.name }}ComponentBase::cmdResponse_out;

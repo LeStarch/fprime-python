@@ -3,6 +3,7 @@ pybind_gen.py:
 
 This is a very crude implementation of the python templater for python bindings.
 """
+import argparse
 import os
 import re
 import sys
@@ -29,8 +30,11 @@ def parse_enum(xml):
 
 
 def parse_array(xml):
-    """ Maps Enum XML to an enum item """
-    return None
+    """ Maps Enum XML to an array item """
+    root = xml.getElementsByTagName("array")[0]
+    size = int(root.getElementsByTagName("size")[0].firstChild.nodeValue)
+    etype = root.getElementsByTagName("type")[0].firstChild.nodeValue
+    return {"ns": root.getAttribute("namespace"), "name": root.getAttribute("name"), "elem_type": etype, "size": size}
 
 
 def parse_serializable(xml):
@@ -116,7 +120,7 @@ def parse_component(xml):
     for element in elements:
         xml.documentElement.appendChild(element)
     root = xml.documentElement
-    component = {"ns": root.getAttribute("namespace"), "name": root.getAttribute("name")}
+    component = {"ns": root.getAttribute("namespace"), "name": root.getAttribute("name"), "kind": root.getAttribute("kind")}
     component["commands"] = parse_comp_commands(xml)
     component["events"] = parse_comp_extras(xml, "event")
     component["channels"] = parse_comp_extras(xml, "channel")
@@ -136,41 +140,58 @@ PARSE_ROUTE_TABLE = {
 
 def main():
     """ Reads a list of XMLs from file, generates output """
-    if len(sys.argv) == 1:
-        print("[ERROR] Need a list of AI XMLs for which to generate bindings")
-        sys.exit(-1)
+    parser = argparse.ArgumentParser(description='Parse out the python bindings and generate binding outputs')
+    parser.add_argument('--ai', nargs='+', help='AI file list of files that might need bindings')
+    parser.add_argument('--deps', nargs='+', help='Dependencies of components explicitly requesting pybind')
+    args = parser.parse_args()
+
+
+
+    # Setup mechanics for fprime autocoders
     set_build_roots(os.environ["BUILD_ROOT"])
     searcher = re.compile(r"(Component|Enum|Array|Serializable)Ai\.xml")
-    # Read out XML list
-    #with open(sys.argv[1], "r") as file_handle:
-    #    stripped = [line.strip() for line in file_handle.readlines()]
-    #    paths = set([Path(line).absolute() for line in stripped])
-    paths = set([Path(item).absolute() for item in sys.argv[1:]])
+    # Read out XML list and make them absolute
+    paths = set([Path(item).absolute() for item in args.ai])
     namespaces = {}
 
     # Running through each path
     for path in paths:
+        relative_path = build_root_relative_path(str(path))
         searched = searcher.search(str(path.name))
+
+        # Skip files that are not something we can handle (ai.xml)
         if not searched:
-            print(f"[ERROR] Unrecognized file { path }")
             continue
+        # Filter out items that are not part of a dependency package
+        elif os.path.dirname(relative_path).replace(os.sep, "_").strip("_") not in args.deps:
+            continue
+
+        # Parse file
         with open(path, "r") as file_handle:
             dom = parse(file_handle)
         item = PARSE_ROUTE_TABLE[searched.group(1)](dom)
         if item is None:
             continue
         item["type"] = searched.group(1)
-        item["header_path"] = build_root_relative_path(str(path)).replace("Ai.xml", "Ac.hpp")
+        item["header_path"] = relative_path.replace("Ai.xml", "Ac.hpp")
+        item["output_directory"] = path.parent
         if item["ns"] not in namespaces:
             namespaces[item["ns"]] = []
         namespaces[item["ns"]].append(item)
-
 
     for template_name in ["PyBindAc.hpp.j2", "PyBindAc.cpp.j2", "fprime_pybind.py.j2"]:
         template = env.get_template(template_name)
         output = template.render(namespaces=namespaces)
         with open(f"{ template_name.replace('.j2', '') }", "w") as file_handle:
             file_handle.write(output)
+    # Write out component templates
+    template = env.get_template("ComponentTemplate.py.j2")
+    for _, items in namespaces.items():
+        for item in [item for item in items if item["type"] == "Component"]:
+            output = template.render(item=item)
+            output_path = item["output_directory"] / f"{ item['name'] }.py.tmpl"
+            with open(output_path, "w") as file_handle:
+                file_handle.write(output)
 
 
 if __name__ == "__main__":
