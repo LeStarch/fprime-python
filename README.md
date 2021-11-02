@@ -27,6 +27,9 @@ Next, add the path to the download in the `library_locations` list set in settin
 library_locations: ../fprime-python
 ```
 
+Python 3 should be on the user's path and the same Python3 version should be run when executing the program. 
+
+
 ## Setting a Component Up With Python Bindings
 
 In order to write a component in python, the component Ai.xml file and the Python implementation file must be registered
@@ -86,6 +89,28 @@ int main(int argc, char* argv[]) {
 }
 ```
 
+## Running a Python Bound Program
+
+In short, the `build-artifacts/python` folder should be included on the PYTHONPATH. The autocoder build integration
+will ensure the latest version of the automatically and hand coded python files are packaged there. This can be done
+in the following ways:
+
+The same version of python used to build should be available on the runtime path.
+
+**Running the Raw Binary**
+
+```
+cd <deployment>/build-artifacts
+PYTHONPATH=`pwd`/python ./bin/<executable> ...
+```
+
+**Running With `fprime-gds`**
+```
+cd <deployment>
+PYTHONPATH=`pwd`/python fprime-gds
+```
+
+
 ## A Working Example
 
 A working example of SignalGen with a number of different types, commands, channels, events,
@@ -95,7 +120,15 @@ and schedule ports is available here:
 
 Enjoy!
 
-## Idiosyncrasies
+## Idiosyncrasies and Errors
+
+```
+libc++abi.dylib: terminating with uncaught exception of type pybind11::error_already_set: AttributeError:
+```
+
+If this error occurs on startup, or lists a Component as the missing attribute then it is likely you have not set your
+PYTHONPATH correctly.  See "Running a Python Bound Program"
+
 
 These are known missing features:
 
