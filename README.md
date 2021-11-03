@@ -15,6 +15,18 @@ verbose and this library reduces that  complexity.
 
 **WARNING: SUPPORT IS ONLY AVAILABLE FOR F´ 2.x.x VERSIONS**
 
+## Architecture
+
+F´ python uses an embedded Python interpreter and a set of automatically generated C++/Python bindings to allow an F´
+deployment to call out to an implementation written in python.  Essentially, bindings build on the F´ autocoder output
+to extend the Component's implementation into the python ecosystem.  This is all handled through autocoding and support
+libraries meaning the user need only mark components as implemented in python (see below).
+
+![fprime-python Architecture](./docs/fprime-python-architecture.png)
+
+Bindings are generated from the component's model and are built on the [`pybind11`](https://github.com/pybind/pybind11)
+library, which handles the nuances of the Python API.
+
 ## Installation and Setup
 
 In order to use `fprime-python` download the source code, or add it as a Git submodule.  Once finished, make sure to
@@ -109,7 +121,6 @@ PYTHONPATH=`pwd`/python ./bin/<executable> ...
 cd <deployment>
 PYTHONPATH=`pwd`/python fprime-gds
 ```
-
 
 ## A Working Example
 
