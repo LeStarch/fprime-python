@@ -1,19 +1,32 @@
 # fprime-python: F´ to Python Bindings
 
-Once in a great blue moon, an fprime developer will find themselves in a bind: call into python code, or incur the
-cost of translating that code into C++ before such code can be used. Since Python code typically represents prototype
-code it is incredibly helpful to call it directly and defer the translation cost until after the project has left the
+Once in a great blue moon, an fprime developer will find themselves in a bind: integrate into existing python code, or
+incur the cost of translating that code into C++ before use. Since Python code is typically deployed as a prototype it
+can be incredibly helpful to call it directly and defer the translation cost until after the project has left the
 prototype phase.
 
 This package allows F´ running as a C++ binary to call into F´ components defined in Python. These components implement
 the functionality of F´ components while maintaining access to the Python environment itself.
 
-**Acknowledgements:** [`pybind11`](https://github.com/pybind/pybind11) library helps quite a bit!  The Python C API is
-verbose and this library reduces that  complexity. 
+fprime-python only supports v2.x.x versions of F´. Further support will be added as necessary to the maintainers.
 
-**WARNING: THIS IS DEEPLY EXPERIMENTAL CODE, NO SUPPORT, NOR GUARANTEE IS PROVIDED.**
+**Acknowledgements:** [`pybind11`](https://github.com/pybind/pybind11) library helps quite a bit! Also thanks to Selina
+Chu, JPL, for the initial suggestion to call embedded Python directly from F´.
 
-**WARNING: SUPPORT IS ONLY AVAILABLE FOR F´ 2.x.x VERSIONS**
+**WARNING:** this is experimental without guarantee. I'll do my best to resolve issues when reported.
+
+## What is fprime-python?
+
+fprime-python expands F´ to allow:
+- Wrapping of Python libraries in F´ Python Components
+- Rapid prototyping of F´ components using Python
+- Exploring F´ component implementation from a Python background
+
+| What does fprime-python do?                  | What does fprime-python not do?                  |
+|----------------------------------------------|--------------------------------------------------|
+| Bridges F´ to Python                         | Reimplement F´ in Python nor remove existing C++ |
+| Allows F´ component implementation in Python | Replace F´ components, ports                     |
+| Exposes F´ types to Python                   |                                                  |
 
 ## Architecture
 
