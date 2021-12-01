@@ -20,12 +20,12 @@ namespace {{ item.ns }} {
     {{ item.name }} ::{{ item.name }}(const char* name) : {{ item.name }}ComponentBase(name) {}
 
     // init function loads python code
-    void {{ item.name }} ::init(const NATIVE_INT_TYPE queueDepth, const NATIVE_INT_TYPE instance) {
+    void {{ item.name }} ::init({%- if item.kind != "passive" -%}const NATIVE_INT_TYPE queueDepth, {%- endif -%}const NATIVE_INT_TYPE instance) {
         py::gil_scoped_acquire acquired{};
         py::module_ module = py::module_::import("{{ item.name }}");
         this->m_self = module.attr("{{ item.name }}")();
         this->m_self.attr("_init_ac")(this);
-        SignalGenComponentBase::init(queueDepth, instance);
+        {{ item.name }}ComponentBase::init({%- if item.kind != "passive" -%}queueDepth, {%- endif -%}instance);
     }
 
     {{ item.name }} ::~{{ item.name }}() {}
@@ -80,18 +80,20 @@ PYBIND11_EMBEDDED_MODULE({{ ns.replace("::", ".") }}, m) {
         {%- endfor -%};
     {% elif item.type == "Component" %}
     py::class_<{{ cpp_class_name }}>(m, "{{ item.name }}")
-        .def("doDispatch", &PyApp::{{ item.name }}::doDispatch)
+        {%- if item.kind != "passive" -%}
+        .def("doDispatch", &{{ item.ns }}::{{ item.name }}::doDispatch)
+        {%- endif -%}
         {% if item.commands %}
-        .def("cmdResponse_out", &PyApp::{{ item.name }}::cmdResponse_out)
+        .def("cmdResponse_out", &{{ item.ns }}::{{ item.name }}::cmdResponse_out)
         {%- endif -%}
         {% for out_port in item.out_ports %}
-        .def("{{ out_port.name }}", &PyApp::{{ item.name }}::{{ out_port.name }})
+        .def("{{ out_port.name }}", &{{ item.ns }}::{{ item.name }}::{{ out_port.name }})
         {%- endfor -%}
         {% for event in item.events %}
-        .def("log_{{ event.severity }}_{{ event.name }}", &PyApp::{{ item.name }}::log_{{ event.severity }}_{{ event.name }})
+        .def("log_{{ event.severity }}_{{ event.name }}", &{{ item.ns }}::{{ item.name }}::log_{{ event.severity }}_{{ event.name }})
         {%- endfor -%}
         {% for channel in item.channels %}
-        .def("tlmWrite_{{ channel.name }}", &PyApp::{{ item.name }}::tlmWrite_{{ channel.name }},py::arg("arg"), py::arg("_tlmTime") = Fw::Time())
+        .def("tlmWrite_{{ channel.name }}", &{{ item.ns }}::{{ item.name }}::tlmWrite_{{ channel.name }},py::arg("arg"), py::arg("_tlmTime") = Fw::Time())
         {%- endfor -%};
     {% endif %}
 {% endfor %}

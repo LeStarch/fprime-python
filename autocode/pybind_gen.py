@@ -46,11 +46,14 @@ def parse_serializable(xml):
     return {"ns": root.getAttribute("namespace"), "name": root.getAttribute("name"), "member_list": members_to_types}
 
 
-def parse_args(xml):
+def parse_args(xml, source=None):
     """"""
     results = []
     for arg in xml.getElementsByTagName("arg"):
-        results.append((arg.getAttribute("name"), arg.getAttribute("type")))
+        arg_type = arg.getAttribute("type")
+        if source is not None and arg_type == "string":
+            arg_type = f"Fw::{ source }StringArg"
+        results.append((arg.getAttribute("name"), arg_type))
     return results
 
 
@@ -59,7 +62,7 @@ def parse_comp_commands(xml):
     results = []
     for command in xml.getElementsByTagName("command"):
         name = command.getAttribute("mnemonic")
-        args = [("opCode", "FwOpcodeType"), ("cmdSeq", "U32")] + parse_args(command)
+        args = [("opCode", "FwOpcodeType"), ("cmdSeq", "U32")] + parse_args(command, "Cmd")
         results.append({"name": name, "arg_full_texts": ["{} {}".format(atype, name) for name, atype in args],
                         "arg_names": ["{}".format(name) for name, _ in args], "args": args})
     return results
@@ -103,8 +106,11 @@ def parse_comp_ports(xml):
         dtype = port.getAttribute("data_type")
         name = port.getAttribute("name")
         kind = port.getAttribute("kind")
-        port_def = port_definitions.get(dtype)
-        obj = {"name": name, "ns": port_def["ns"], "args": port_def["args"], "arg_full_texts": port_def["arg_full_texts"], "arg_names": port_def["arg_names"]}
+        port_def = port_definitions[dtype]
+        try:
+            obj = {"name": name, "ns": port_def["ns"], "args": port_def["args"], "arg_full_texts": port_def["arg_full_texts"], "arg_names": port_def["arg_names"]}
+        except:
+            raise Exception(f"Malformed port definition with name: { name }")
         if "input" in kind and dtype not in verboten:
             in_ports.append(obj)
         elif "output" in kind and dtype not in verboten:
@@ -165,13 +171,32 @@ def main():
         # Filter out items that are not part of a dependency package
         elif os.path.dirname(relative_path).replace(os.sep, "_").strip("_") not in args.deps:
             continue
-
+        try:
+            parser_function = PARSE_ROUTE_TABLE[searched.group(1)]
+        except Exception as exc:
+            print(f"[ERROR] PyBind found unknown model type { searched.group(1) }", file=sys.stderr)
+            sys.exit(1)
         # Parse file
-        with open(path, "r") as file_handle:
-            dom = parse(file_handle)
-        item = PARSE_ROUTE_TABLE[searched.group(1)](dom)
-        if item is None:
-            continue
+        try:
+            with open(path, "r") as file_handle:
+                 dom = parse(file_handle)
+            item = parser_function(dom)
+            if item is None:
+                continue
+        except OSError as ose:
+            print(f"[ERROR] PyBind errored reading: { path } with error { exc }", file=sys.stderr)
+            sys.exit(1)
+        except IndexError:
+            print(f"[ERROR] PyBind errored parsing: { path }. Required tag missing, check for misspellings.", file=sys.stderr)
+            sys.exit(1)
+        except KeyError as ker:
+            ker = str(ker)
+            message = f"find symbol {ker}" if ":" in ker else f"read field {ker}"
+            print(f"[ERROR] PyBind unable { message }", file=sys.stderr)
+            sys.exit(1)
+        except Exception as exc:
+            print(f"[ERROR] PyBind errored parsing: { path } with error { exc }", file=sys.stderr)
+            sys.exit(1)
         item["type"] = searched.group(1)
         item["header_path"] = relative_path.replace("Ai.xml", "Ac.hpp")
         item["output_directory"] = path.parent
