@@ -52,7 +52,7 @@ def parse_args(xml, source=None):
     for arg in xml.getElementsByTagName("arg"):
         arg_type = arg.getAttribute("type")
         if source is not None and arg_type == "string":
-            arg_type = f"Fw::{ source }StringArg"
+            arg_type = f"const Fw::{ source }StringArg&"
         results.append((arg.getAttribute("name"), arg_type))
     return results
 

@@ -14,7 +14,7 @@
 {% set cpp_class_name = item.ns + "::" + item.name -%}
 {% if item.type == "Component" %}
 namespace {{ item.ns }} {
-    class {{ item.name }} : public {{ item.name }}ComponentBase {
+    class __attribute__((visibility("default"))) {{ item.name }} : public {{ item.name }}ComponentBase {
       public:
         /**
          * {{ item.name }}: c++ function implementations that delegate across to the python side.
