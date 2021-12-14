@@ -27,8 +27,8 @@ class {{ item.name }}Base(object):
         self.this.cmdResponse_out(opcode, cmd_seq, response)
     {%- endif %}
     {% for out_port in item.out_ports -%}
-    def {{ output_port.name }}_out({{ ", ".join(["self"] + out_port.arg_names) }}):
-        self.this.{{ output_port.name }}_out({{ ",".join(out_port.arg_names) }})
+    def {{ out_port.name }}_out({{ ", ".join(["self"] + out_port.arg_names) }}):
+        self.this.{{ out_port.name }}_out({{ ",".join(out_port.arg_names) }})
 
     {% endfor %}
     {% for channel in item.channels -%}

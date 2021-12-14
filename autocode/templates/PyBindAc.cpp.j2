@@ -80,14 +80,14 @@ PYBIND11_EMBEDDED_MODULE({{ ns.replace("::", ".") }}, m) {
         {%- endfor -%};
     {% elif item.type == "Component" %}
     py::class_<{{ cpp_class_name }}>(m, "{{ item.name }}")
-        {%- if item.kind != "passive" -%}
+        {%- if item.kind == "queued" -%}
         .def("doDispatch", &{{ item.ns }}::{{ item.name }}::doDispatch)
         {%- endif -%}
         {% if item.commands %}
         .def("cmdResponse_out", &{{ item.ns }}::{{ item.name }}::cmdResponse_out)
         {%- endif -%}
         {% for out_port in item.out_ports %}
-        .def("{{ out_port.name }}", &{{ item.ns }}::{{ item.name }}::{{ out_port.name }})
+        .def("{{ out_port.name }}", &{{ item.ns }}::{{ item.name }}::{{ out_port.name }}_out)
         {%- endfor -%}
         {% for event in item.events %}
         .def("log_{{ event.severity }}_{{ event.name }}", &{{ item.ns }}::{{ item.name }}::log_{{ event.severity }}_{{ event.name }})

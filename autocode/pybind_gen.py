@@ -51,8 +51,10 @@ def parse_args(xml, source=None):
     results = []
     for arg in xml.getElementsByTagName("arg"):
         arg_type = arg.getAttribute("type")
-        if source is not None and arg_type == "string":
-            arg_type = f"const Fw::{ source }StringArg&"
+        if source == "--cmd--" and arg_type == "string":
+            arg_type = f"const Fw::CmdStringArg&"
+        elif arg_type == "string":
+            arg_type = f"{ arg.getAttribute('name') }String{ '&' if arg.getAttribute('pass_by') == 'reference' else '' }"
         results.append((arg.getAttribute("name"), arg_type))
     return results
 
@@ -62,7 +64,7 @@ def parse_comp_commands(xml):
     results = []
     for command in xml.getElementsByTagName("command"):
         name = command.getAttribute("mnemonic")
-        args = [("opCode", "FwOpcodeType"), ("cmdSeq", "U32")] + parse_args(command, "Cmd")
+        args = [("opCode", "FwOpcodeType"), ("cmdSeq", "U32")] + parse_args(command, "--cmd--")
         results.append({"name": name, "arg_full_texts": ["{} {}".format(atype, name) for name, atype in args],
                         "arg_names": ["{}".format(name) for name, _ in args], "args": args})
     return results
@@ -88,8 +90,8 @@ def port_defs(xml):
     for port_import in xml.getElementsByTagName("import_port_type"):
         with open(search_for_file("Port", port_import.firstChild.nodeValue), "r") as file_handle:
             port_xml = parse(file_handle)
-            args = [("portNum", "NATIVE_INT_TYPE")] + list(parse_args(port_xml))
             ns = port_xml.documentElement.getAttribute("namespace")
+            args = [("portNum", "NATIVE_INT_TYPE")] + list(parse_args(port_xml, ns))
             name = port_xml.documentElement.getAttribute("name")
             results[ns + "::" + name] = {"name": name, "ns": ns, "arg_full_texts": ["{} {}".format(atype, name) for name, atype in args],
                                          "arg_names": ["{}".format(name) for name, _ in args], "args": args}

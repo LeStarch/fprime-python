@@ -33,7 +33,7 @@ namespace {{ item.ns }} {
         void {{ command.name }}_cmdHandler({{ ", ".join(command.arg_full_texts) }});
         {% endfor %}
       public:
-        {% if item.kind != "passive" %}
+        {% if item.kind == "queued" %}
         // doDispatch binding
         using {{ item.name }}ComponentBase::doDispatch;
         {% endif %}
