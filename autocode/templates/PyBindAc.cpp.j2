@@ -4,7 +4,9 @@
 // ======================================================================
 {% for ns, types in namespaces.items() %}
 {% for item in types %}
+{% if item.header_path != "" %}
 #include <{{ item.header_path }}>
+{%- endif -%}
 {%- endfor %}
 {%- endfor %}
 #include <PyBindAc.hpp>
@@ -33,13 +35,13 @@ namespace {{ item.ns }} {
     {% for in_port in item.in_ports -%}
     void {{ item.name }} ::{{ in_port.name }}_handler({{ ",".join(in_port.arg_full_texts) }}) {
         py::gil_scoped_acquire acquired{};
-        m_self.attr("{{ in_port.name }}_handler")({{ ",".join(in_port.arg_names) }});
+        m_self.attr("{{ in_port.name }}_handler")({{ functions.upcast_arguments(in_port.args) }});
     }
     {% endfor %}
     {% for command in item.commands -%}
     void {{ item.name }} ::{{ command.name }}_cmdHandler({{ ", ".join(command.arg_full_texts) }}) {
         py::gil_scoped_acquire acquired{};
-        m_self.attr("{{ command.name }}_cmdHandler")({{ ", ".join(command.arg_names) }});
+        m_self.attr("{{ command.name }}_cmdHandler")({{ functions.upcast_arguments(command.args) }});
     }
     {% endfor %}
 }; // Namespace {{ item.ns }}
@@ -53,6 +55,7 @@ PYBIND11_EMBEDDED_MODULE({{ ns.replace("::", ".") }}, m) {
     py::class_<{{ cpp_class_name }}> _{{ item.name.lower() }}(m, "{{ item.name }}");
     _{{ item.name.lower() }}.def(py::init<>());
     _{{ item.name.lower() }}.def(py::init<{{ cpp_class_name }}::t>());
+    _{{ item.name.lower() }}.def_readwrite("e", &{{ cpp_class_name }}::e);
 
     py::enum_<{{ cpp_class_name }}::t>(_{{ item.name.lower() }}, "t")
         {% for val in item.vals -%}
@@ -95,6 +98,9 @@ PYBIND11_EMBEDDED_MODULE({{ ns.replace("::", ".") }}, m) {
         {% for channel in item.channels %}
         .def("tlmWrite_{{ channel.name }}", &{{ item.ns }}::{{ item.name }}::tlmWrite_{{ channel.name }},py::arg("arg"), py::arg("_tlmTime") = Fw::Time())
         {%- endfor -%};
+    {% elif item.type == "string" %}
+    py::class_<{{ cpp_class_name }}>(m, "{{ item.name }}")
+        .def(py::init<char *>());
     {% endif %}
 {% endfor %}
 }

@@ -20,6 +20,27 @@ env = Environment(
     loader=PackageLoader(__name__),
     autoescape=select_autoescape()
 )
+STRING_PAIRS = []
+#                [("String", "Fw/Types/String.hpp"),
+#                ("LogStringArg", "Fw/Log/LogString.hpp"),
+#                ("TlmString", "Fw/Tlm/TlmString.hpp"),
+#                ("CmdStringArg", "Fw/Cmd/CmdString.hpp")]
+
+STRING_TYPES = [{
+    "ns": "Fw",
+    "type": "string",
+    "name": item,
+    "header_path": path
+} for item, path in STRING_PAIRS]
+
+
+def upcast_argument(argument):
+    """ Upcast arguments en-route to features """
+    return argument[0] if "string" not in argument[1].lower() else argument[0] + ".toChar()"
+
+
+def upcast_arguments(arguments):
+    return ",".join([upcast_argument(argument) for argument in arguments])
 
 
 def parse_enum(xml):
@@ -53,8 +74,17 @@ def parse_args(xml, source=None):
         arg_type = arg.getAttribute("type")
         if source == "--cmd--" and arg_type == "string":
             arg_type = f"const Fw::CmdStringArg&"
-        elif arg_type == "string":
-            arg_type = f"{ arg.getAttribute('name') }String{ '&' if arg.getAttribute('pass_by') == 'reference' else '' }"
+        elif arg_type == "string" and source is not None:
+            invented_string_type = f"{ arg.getAttribute('name') }String"
+            STRING_TYPES.append(
+                {
+                    "ns": source,
+                    "type": "string",
+                    "name": invented_string_type,
+                    "header_path": ""
+                }
+            )
+            arg_type = f"{ invented_string_type }{ '&' if arg.getAttribute('pass_by') == 'reference' else '' }"
         results.append((arg.getAttribute("name"), arg_type))
     return results
 
@@ -118,6 +148,7 @@ def parse_comp_ports(xml):
         elif "output" in kind and dtype not in verboten:
             out_ports.append(obj)
     return in_ports, out_ports
+
 
 def parse_component(xml):
     """ Maps Enum XML to an enum item """
@@ -206,9 +237,15 @@ def main():
             namespaces[item["ns"]] = []
         namespaces[item["ns"]].append(item)
 
+    # String type additions
+    for string_type in STRING_TYPES:
+        if string_type["ns"] not in namespaces:
+            namespaces[string_type["ns"]] = []
+        namespaces[string_type["ns"]].append(string_type)
+
     for template_name in ["PyBindAc.hpp.j2", "PyBindAc.cpp.j2", "fprime_pybind.py.j2"]:
         template = env.get_template(template_name)
-        output = template.render(namespaces=namespaces)
+        output = template.render(namespaces=namespaces, functions={"upcast_arguments": upcast_arguments})
         with open(f"{ template_name.replace('.j2', '') }", "w") as file_handle:
             file_handle.write(output)
     # Write out component templates

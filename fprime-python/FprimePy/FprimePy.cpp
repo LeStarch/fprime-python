@@ -2,6 +2,10 @@
 #include <Fw/Time/Time.hpp>
 #include <Fw/Cmd/CmdResponsePortAc.hpp>
 #include <Fw/Comp/QueuedComponentBase.hpp>
+#include <Fw/Types/String.hpp>
+#include <Fw/Cmd/CmdString.hpp>
+#include <Fw/Log/LogString.hpp>
+#include <Fw/Tlm/TlmString.hpp>
 
 namespace FprimePy {
     py::scoped_interpreter* interpreter;
@@ -38,4 +42,12 @@ PYBIND11_EMBEDDED_MODULE(Fw, m) {
         .value("MSG_DISPATCH_EXIT", Fw::QueuedComponentBase::MSG_DISPATCH_EXIT)
         .export_values();
 
+    py::class_<Fw::String>(m, "String")
+            .def(py::init<char *>());
+    py::class_<Fw::LogStringArg>(m, "LogStringArg")
+            .def(py::init<char *>());
+    py::class_<Fw::TlmString>(m, "TlmString")
+            .def(py::init<char *>());
+    py::class_<Fw::CmdStringArg>(m, "CmdStringArg")
+            .def(py::init<char *>());
 }

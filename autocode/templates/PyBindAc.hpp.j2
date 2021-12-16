@@ -5,7 +5,9 @@
 #include <fprime-python/FprimePy/FprimePy.hpp>
 {% for ns, types in namespaces.items() %}
 {% for item in types %}
+{% if item.header_path != "" %}
 #include <{{ item.header_path }}>
+{% endif %}
 {% endfor %}
 {% endfor %}
 
