@@ -2,6 +2,32 @@
 // \title  PyBindAc.cpp
 // \brief  autocode python binding implementation
 // ======================================================================
+{% if uses_string %}
+#include <Fw/Types/String.hpp>
+{% endif %}
+{% if uses_time %}
+#include <Fw/Time/Time.hpp>
+{% endif %}
+{% if uses_commands %}
+#include <Fw/Cmd/CmdResponsePortAc.hpp>
+#include <Fw/Cmd/CmdString.hpp>
+{% endif %}
+{% if uses_queues %}
+#include <Fw/Comp/QueuedComponentBase.hpp>
+{% endif %}
+{% if uses_parameters %}
+#include <Fw/Prm/PrmString.hpp>
+#include <Fw/Prm/PrmGetPortAc.hpp>
+{% endif %}
+{% if uses_telemetry %}
+#include <Fw/Tlm/TlmString.hpp>
+{% endif %}
+{% if uses_events %}
+#include <Fw/Log/LogString.hpp>
+{% endif %}
+
+
+
 {% for ns, types in namespaces.items() %}
 {% for item in types %}
 {% if item.header_path != "" %}
@@ -44,11 +70,51 @@ namespace {{ item.ns }} {
         m_self.attr("{{ command.name }}_cmdHandler")({{ functions.upcast_arguments(command.args) }});
     }
     {% endfor %}
+    {% for parameter in item.parameters %}
+    std::tuple<{{ parameter.data_type }}, Fw::ParamValid> {{ item.name }} ::paramGet_{{ parameter.name }}_helper() {
+        Fw::ParamValid status;
+        {{ parameter.data_type }} value = this->paramGet_{{ parameter.name }}(status);
+        return std::make_tuple(value, status);
+    }
+    {% endfor %}
 }; // Namespace {{ item.ns }}
 {% endif %}
 {% endfor %}
 
 PYBIND11_EMBEDDED_MODULE({{ ns.replace("::", ".") }}, m) {
+{% if ns == "Fw"%}
+    {% if uses_time %}
+    py::class_<Fw::Time>(m, "Time");
+    {% endif %}
+    {% if uses_commands %}
+    py::enum_<Fw::CommandResponse>(m, "CommandResponse")
+        .value("COMMAND_OK", Fw::COMMAND_OK)
+        .value("COMMAND_INVALID_OPCODE", Fw::COMMAND_INVALID_OPCODE)
+        .value("COMMAND_VALIDATION_ERROR", Fw::COMMAND_VALIDATION_ERROR)
+        .value("COMMAND_FORMAT_ERROR", Fw::COMMAND_FORMAT_ERROR)
+        .value("COMMAND_EXECUTION_ERROR", Fw::COMMAND_EXECUTION_ERROR)
+        .value("COMMAND_BUSY", Fw::COMMAND_BUSY)
+        .export_values();
+    {% endif %}
+    {% if uses_queues %}
+    py::enum_<Fw::QueuedComponentBase::MsgDispatchStatus>(m, "MsgDispatchStatus")
+        .value("MSG_DISPATCH_OK", Fw::QueuedComponentBase::MSG_DISPATCH_OK)
+        .value("MSG_DISPATCH_EMPTY", Fw::QueuedComponentBase::MSG_DISPATCH_EMPTY)
+        .value("MSG_DISPATCH_ERROR", Fw::QueuedComponentBase::MSG_DISPATCH_ERROR)
+        .value("MSG_DISPATCH_EXIT", Fw::QueuedComponentBase::MSG_DISPATCH_EXIT)
+        .export_values();
+    {% endif %}
+    {% if uses_parameters %}
+    py::enum_<Fw::ParamValid>(m, "ParamValid")
+        .value("PARAM_UNINIT", Fw::PARAM_UNINIT)
+        .value("PARAM_VALID", Fw::PARAM_VALID)
+        .value("PARAM_INVALID", Fw::PARAM_INVALID)
+        .value("PARAM_DEFAULT", Fw::PARAM_DEFAULT)
+        .export_values();
+    {% endif %}
+{% endif %}
+
+
 {% for item in types -%}
     {% set cpp_class_name = item.ns + "::" + item.name -%}
     {% if item.type == "Enum" %}
@@ -97,10 +163,14 @@ PYBIND11_EMBEDDED_MODULE({{ ns.replace("::", ".") }}, m) {
         {%- endfor -%}
         {% for channel in item.channels %}
         .def("tlmWrite_{{ channel.name }}", &{{ item.ns }}::{{ item.name }}::tlmWrite_{{ channel.name }},py::arg("arg"), py::arg("_tlmTime") = Fw::Time())
+        {%- endfor -%}
+        {% for param in item.parameters %}
+        .def("paramGet_{{ param.name }}", &{{ item.ns }}::{{ item.name }}::paramGet_{{ param.name }}_helper)
         {%- endfor -%};
     {% elif item.type == "string" %}
     py::class_<{{ cpp_class_name }}>(m, "{{ item.name }}")
-        .def(py::init<char *>());
+        .def(py::init<char *>())
+        .def("toChar", &{{ item.ns }}::{{ item.name }}::toChar);
     {% endif %}
 {% endfor %}
 }

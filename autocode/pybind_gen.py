@@ -20,18 +20,43 @@ env = Environment(
     loader=PackageLoader(__name__),
     autoescape=select_autoescape()
 )
-STRING_PAIRS = []
-#                [("String", "Fw/Types/String.hpp"),
-#                ("LogStringArg", "Fw/Log/LogString.hpp"),
-#                ("TlmString", "Fw/Tlm/TlmString.hpp"),
-#                ("CmdStringArg", "Fw/Cmd/CmdString.hpp")]
+STRING_PAIRS = {
+    "string": ("String", "Fw/Types/String.hpp"),
+    "channel": ("TlmString", "Fw/Tlm/TlmString.hpp"),
+    "event": ("LogStringArg", "Fw/Log/LogString.hpp"),
+    "command": ("CmdStringArg", "Fw/Cmd/CmdString.hpp"),
+    "parameter": ("ParamString", "Fw/Prm/PrmString.hpp")
+}
 
-STRING_TYPES = [{
-    "ns": "Fw",
-    "type": "string",
-    "name": item,
-    "header_path": path
-} for item, path in STRING_PAIRS]
+STRING_NEEDS = set()
+STRING_TYPES = []
+FEATURES = {
+    "uses_time": False,
+    "uses_string": False,
+    "uses_commands": False,
+    "uses_events": False,
+    "uses_telemetry": False,
+    "uses_parameters": False,
+    "uses_queues": False,
+    "uses_tasks": False
+}
+
+def make_string(item, path, ns="Fw"):
+    """ Make pair """
+    return {
+        "ns": ns,
+        "type": "string",
+        "name": item,
+        "header_path": path
+    }
+
+
+def get_type_name(cpp_type):
+    return cpp_type.replace("const", "").replace("&", "").strip().replace("::", ".")
+
+
+def autocast_arg(arg_name, arg_type, python_type):
+    return f"{ get_type_name(arg_type) }({ arg_name }) if isinstance({ arg_name }, { python_type }) else { arg_name }"
 
 
 def upcast_argument(argument):
@@ -39,8 +64,19 @@ def upcast_argument(argument):
     return argument[0] if "string" not in argument[1].lower() else argument[0] + ".toChar()"
 
 
+def downcast_argument(argument):
+    """ """
+    arg_name, arg_type = argument
+    return arg_name if "string" not in arg_type.lower() else autocast_arg(arg_name, arg_type, "str")
+
+
 def upcast_arguments(arguments):
     return ",".join([upcast_argument(argument) for argument in arguments])
+
+
+def downcast_arguments(arguments):
+    print(">>>>>>>", arguments)
+    return ",".join([downcast_argument(argument) for argument in arguments])
 
 
 def parse_enum(xml):
@@ -64,6 +100,9 @@ def parse_serializable(xml):
     root = xml.getElementsByTagName("serializable")[0]
     for tag in xml.getElementsByTagName("member"):
         members_to_types[tag.getAttribute("name")] = tag.getAttribute("type")
+        if tag.getAttribute("type") == "Fw::String":
+            FEATURES["uses_string"] = True
+            STRING_NEEDS.add(STRING_PAIRS["string"])
     return {"ns": root.getAttribute("namespace"), "name": root.getAttribute("name"), "member_list": members_to_types}
 
 
@@ -73,18 +112,15 @@ def parse_args(xml, source=None):
     for arg in xml.getElementsByTagName("arg"):
         arg_type = arg.getAttribute("type")
         if source == "--cmd--" and arg_type == "string":
+            STRING_NEEDS.add(STRING_PAIRS["command"])
             arg_type = f"const Fw::CmdStringArg&"
+        elif source == "--event--" and arg_type == "string":
+            arg_type = f"const Fw::LogStringArg&"
+            STRING_NEEDS.add(STRING_PAIRS["event"])
         elif arg_type == "string" and source is not None:
             invented_string_type = f"{ arg.getAttribute('name') }String"
-            STRING_TYPES.append(
-                {
-                    "ns": source,
-                    "type": "string",
-                    "name": invented_string_type,
-                    "header_path": ""
-                }
-            )
-            arg_type = f"{ invented_string_type }{ '&' if arg.getAttribute('pass_by') == 'reference' else '' }"
+            STRING_TYPES.append(make_string(invented_string_type, "", ns=source))
+            arg_type = f"{ source }::{ invented_string_type }{ '&' if arg.getAttribute('pass_by') == 'reference' else ''}"
         results.append((arg.getAttribute("name"), arg_type))
     return results
 
@@ -93,6 +129,8 @@ def parse_comp_commands(xml):
     """"""
     results = []
     for command in xml.getElementsByTagName("command"):
+        FEATURES["uses_time"] = True
+        FEATURES["uses_commands"] = True
         name = command.getAttribute("mnemonic")
         args = [("opCode", "FwOpcodeType"), ("cmdSeq", "U32")] + parse_args(command, "--cmd--")
         results.append({"name": name, "arg_full_texts": ["{} {}".format(atype, name) for name, atype in args],
@@ -106,10 +144,28 @@ def parse_comp_extras(xml, extra_type):
     for item in xml.getElementsByTagName(extra_type):
         obj = {"name": item.getAttribute("name")}
         if extra_type == "event":
-            args = parse_args(item)
+            FEATURES["uses_time"] = True
+            FEATURES["uses_events"] = True
+            args = parse_args(item, source="--event--")
             obj["severity"] = item.getAttribute("severity")
+            obj["args"] = args
             obj["arg_full_texts"] = ["{} {}".format(atype, name) for name, atype in args],
             obj["arg_names"] = ["{}".format(name) for name, _ in args]
+        elif extra_type == "channel":
+            FEATURES["uses_time"] = True
+            FEATURES["uses_telemetry"] = True
+            obj["data_type"] = item.getAttribute("data_type")
+            if obj["data_type"] == "string":
+                obj["data_type"] = "Fw::TlmString"
+                STRING_NEEDS.add(STRING_PAIRS[extra_type])
+        elif extra_type == "parameter":
+            FEATURES["uses_time"] = True
+            FEATURES["uses_commands"] = True
+            FEATURES["uses_parameters"] = True
+            obj["data_type"] = item.getAttribute("data_type")
+            if obj["data_type"] == "string":
+                obj["data_type"] = "Fw::ParamString"
+                STRING_NEEDS.add(STRING_PAIRS[extra_type])
         results.append(obj)
     return results
 
@@ -138,6 +194,10 @@ def parse_comp_ports(xml):
         dtype = port.getAttribute("data_type")
         name = port.getAttribute("name")
         kind = port.getAttribute("kind")
+        if kind != "passive":
+            FEATURES["uses_queues"] = True
+        if kind == "active":
+            FEATURES["uses_tasks"] = True
         port_def = port_definitions[dtype]
         try:
             obj = {"name": name, "ns": port_def["ns"], "args": port_def["args"], "arg_full_texts": port_def["arg_full_texts"], "arg_names": port_def["arg_names"]}
@@ -163,6 +223,7 @@ def parse_component(xml):
     component["commands"] = parse_comp_commands(xml)
     component["events"] = parse_comp_extras(xml, "event")
     component["channels"] = parse_comp_extras(xml, "channel")
+    component["parameters"] = parse_comp_extras(xml, "parameter")
     in_ports, out_ports = parse_comp_ports(xml)
     component["in_ports"] = in_ports
     component["out_ports"] = out_ports
@@ -228,6 +289,7 @@ def main():
             print(f"[ERROR] PyBind unable { message }", file=sys.stderr)
             sys.exit(1)
         except Exception as exc:
+            raise
             print(f"[ERROR] PyBind errored parsing: { path } with error { exc }", file=sys.stderr)
             sys.exit(1)
         item["type"] = searched.group(1)
@@ -238,14 +300,20 @@ def main():
         namespaces[item["ns"]].append(item)
 
     # String type additions
-    for string_type in STRING_TYPES:
+    for string_type in STRING_TYPES + [make_string(*item) for item in STRING_NEEDS]:
         if string_type["ns"] not in namespaces:
             namespaces[string_type["ns"]] = []
         namespaces[string_type["ns"]].append(string_type)
 
     for template_name in ["PyBindAc.hpp.j2", "PyBindAc.cpp.j2", "fprime_pybind.py.j2"]:
         template = env.get_template(template_name)
-        output = template.render(namespaces=namespaces, functions={"upcast_arguments": upcast_arguments})
+        output = template.render(namespaces=namespaces, functions={
+                "upcast_arguments": upcast_arguments,
+                "downcast_arguments": downcast_arguments,
+                "autocast_arg": autocast_arg,
+            },
+            **FEATURES
+        )
         with open(f"{ template_name.replace('.j2', '') }", "w") as file_handle:
             file_handle.write(output)
     # Write out component templates

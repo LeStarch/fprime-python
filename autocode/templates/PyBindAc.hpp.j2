@@ -34,6 +34,10 @@ namespace {{ item.ns }} {
         {% for command in item.commands -%}
         void {{ command.name }}_cmdHandler({{ ", ".join(command.arg_full_texts) }});
         {% endfor %}
+
+        {% for parameter in item.parameters %}
+        std::tuple<{{ parameter.data_type }}, Fw::ParamValid> paramGet_{{ parameter.name }}_helper();
+        {% endfor %}
       public:
         {% if item.kind == "queued" %}
         // doDispatch binding
@@ -55,6 +59,11 @@ namespace {{ item.ns }} {
         {% for event in item.events -%}
         using {{ item.name }}ComponentBase::log_{{ event.severity }}_{{ event.name }};
         {% endfor %}
+        // Changing access modifiers for parameter calls
+        {% for param in item.parameters %}
+        using {{ item.name }}ComponentBase::paramGet_{{ param.name }};
+        {% endfor %}
+
       public:
         py::object m_self;
     };

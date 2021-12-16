@@ -15,7 +15,7 @@ class {{ item.name }}Base(object):
         """ Initialize 'this' to redirect into the CPP """
         self.this = this
 
-    {% if item.kind != "passive" %}
+    {% if item.kind == "queued" %}
     def doDispatch(self):
         """ Dispatch method """
         self.this.doDispatch()
@@ -28,18 +28,23 @@ class {{ item.name }}Base(object):
     {%- endif %}
     {% for out_port in item.out_ports -%}
     def {{ out_port.name }}_out({{ ", ".join(["self"] + out_port.arg_names) }}):
-        self.this.{{ out_port.name }}_out({{ ",".join(out_port.arg_names) }})
+        self.this.{{ out_port.name }}_out({{ functions.downcast_arguments(out_port.args) }})
 
     {% endfor %}
     {% for channel in item.channels -%}
     def tlmWrite_{{ channel.name }}(self, value):
-        self.this.tlmWrite_{{ channel.name }}(value)
+        self.this.tlmWrite_{{ channel.name }}({{ functions.autocast_arg("value", "Fw::TlmString", "str") }})
 
     {% endfor %}
     {% for event in item.events -%}
     def log_{{ event.severity }}_{{ event.name }}({{ ", ".join(["self"] + event.arg_names) }}):
-        self.this.log_{{ event.severity }}_{{ event.name }}({{ ",".join(event.arg_names) }})
+        self.this.log_{{ event.severity }}_{{ event.name }}({{ functions.downcast_arguments(event.args) }})
 
+    {% endfor %}
+    {% for param in item.parameters -%}
+    def paramGet_{{ param.name }}(self):
+        param_value, param_status = self.this.paramGet_{{ param.name }}() # Note: triggers helper in component bridge
+        return param_value if not hasattr(param_value, "toChar") else param_value.toChar(), param_status
     {% endfor %}
 {% endif %}
 {% endfor %}
