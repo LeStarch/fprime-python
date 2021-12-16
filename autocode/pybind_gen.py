@@ -75,7 +75,6 @@ def upcast_arguments(arguments):
 
 
 def downcast_arguments(arguments):
-    print(">>>>>>>", arguments)
     return ",".join([downcast_argument(argument) for argument in arguments])
 
 
@@ -289,7 +288,6 @@ def main():
             print(f"[ERROR] PyBind unable { message }", file=sys.stderr)
             sys.exit(1)
         except Exception as exc:
-            raise
             print(f"[ERROR] PyBind errored parsing: { path } with error { exc }", file=sys.stderr)
             sys.exit(1)
         item["type"] = searched.group(1)
