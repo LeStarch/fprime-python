@@ -109,7 +109,7 @@ endfunction(register_python_component)
 function(add_module_target MODULE_NAME TARGET_NAME GLOBAL_TARGET_NAME AC_INPUTS SOURCE_FILES AC_OUTPUTS MOD_DEPS)
     foreach (AC_IN IN LISTS AC_INPUTS)
         # Constructing a global list of types in the system
-        if (AC_IN MATCHES ".*(Array)|(Serializable)|(Enum)Ai.xml$")
+	if (AC_IN MATCHES ".*(Array)|(Serializable)|(Enum)Ai.xml$" AND NOT MODULE_NAME MATCHES "^Autocoders*")
             set_property(TARGET ${GLOBAL_TARGET_NAME} APPEND PROPERTY PYTHON_BINDINGS ${AC_IN})
 	        add_dependencies(${GLOBAL_TARGET_NAME} ${MODULE_NAME})
         # Translate MOD_DEPS to a component property
