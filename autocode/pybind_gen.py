@@ -118,7 +118,9 @@ def parse_args(xml, source=None):
             STRING_NEEDS.add(STRING_PAIRS["event"])
         elif arg_type == "string" and source is not None:
             invented_string_type = f"{ arg.getAttribute('name') }String"
-            STRING_TYPES.append(make_string(invented_string_type, "", ns=source))
+            # Check that no other types already defined
+            if not filter(lambda st: st["name"] == invented_string_type and st["ns"] == source, STRING_TYPES):
+                STRING_TYPES.append(make_string(invented_string_type, "", ns=source))
             arg_type = f"{ source }::{ invented_string_type }{ '&' if arg.getAttribute('pass_by') == 'reference' else ''}"
         results.append((arg.getAttribute("name"), arg_type))
     return results
@@ -289,6 +291,7 @@ def main():
             sys.exit(1)
         except Exception as exc:
             print(f"[ERROR] PyBind errored parsing: { path } with error { exc }", file=sys.stderr)
+            raise
             sys.exit(1)
         item["type"] = searched.group(1)
         item["header_path"] = relative_path.replace("Ai.xml", "Ac.hpp")
