@@ -119,7 +119,8 @@ def parse_args(xml, source=None):
         elif arg_type == "string" and source is not None:
             invented_string_type = f"{ arg.getAttribute('name') }String"
             # Check that no other types already defined
-            if not filter(lambda st: st["name"] == invented_string_type and st["ns"] == source, STRING_TYPES):
+            existing = list(filter(lambda st: st["name"] == invented_string_type and st["ns"] == source, STRING_TYPES))
+            if not existing:
                 STRING_TYPES.append(make_string(invented_string_type, "", ns=source))
             arg_type = f"{ source }::{ invented_string_type }{ '&' if arg.getAttribute('pass_by') == 'reference' else ''}"
         results.append((arg.getAttribute("name"), arg_type))
