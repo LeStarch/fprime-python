@@ -26,9 +26,14 @@ class {{ item.name }}Base(object):
         """ Command response handler """
         self.this.cmdResponse_out(opcode, cmd_seq, response)
     {%- endif %}
+    {% if item.commands or items.channels or items.events or item.parameters %}
+    def getTime(self):
+        """ getTime handler """
+        return self.this.getTime()
+    {%- endif %}
     {% for out_port in item.out_ports -%}
     def {{ out_port.name }}_out({{ ", ".join(["self"] + out_port.arg_names) }}):
-        self.this.{{ out_port.name }}_out({{ functions.downcast_arguments(out_port.args) }})
+        return self.this.{{ out_port.name }}_out({{ functions.downcast_arguments(out_port.args) }})
 
     {% endfor %}
     {% for channel in item.channels -%}

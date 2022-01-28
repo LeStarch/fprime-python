@@ -122,6 +122,7 @@ PYBIND11_EMBEDDED_MODULE({{ ns.replace("::", ".") }}, m) {
     _{{ item.name.lower() }}.def(py::init<>());
     _{{ item.name.lower() }}.def(py::init<{{ cpp_class_name }}::t>());
     _{{ item.name.lower() }}.def_readwrite("e", &{{ cpp_class_name }}::e);
+    _{{ item.name.lower() }}.attr("NUM_CONSTANTS") = py::int_({{ cpp_class_name }}::NUM_CONSTANTS);
 
     py::enum_<{{ cpp_class_name }}::t>(_{{ item.name.lower() }}, "t")
         {% for val in item.vals -%}
@@ -133,9 +134,11 @@ PYBIND11_EMBEDDED_MODULE({{ ns.replace("::", ".") }}, m) {
     _{{ item.name.lower() }}.def(py::init<>());
     _{{ item.name.lower() }}.def(py::init<{{ ",".join([item.elem_type] * item.size) }}>());
     _{{ item.name.lower() }}.def("__getitem__", [](const {{ cpp_class_name }} &a, int b) {
+                if (b >= {{ item.size }} ) { throw std::out_of_range("array index out of bounds"); }
                 return a[b];
             }, py::is_operator());
     _{{ item.name.lower() }}.def("__setitem__", []({{ cpp_class_name }} &a, int b, {{ item.elem_type }} c) {
+                if (b >= {{ item.size }} ) { throw std::out_of_range("array index out of bounds"); }
                 a[b] = c;
             }, py::is_operator());
     _{{ item.name.lower() }}.attr("size") = py::int_({{ item.size }});
@@ -154,6 +157,9 @@ PYBIND11_EMBEDDED_MODULE({{ ns.replace("::", ".") }}, m) {
         {%- endif -%}
         {% if item.commands %}
         .def("cmdResponse_out", &{{ item.ns }}::{{ item.name }}::cmdResponse_out)
+        {%- endif -%}
+        {% if item.commands or items.channels or items.events or item.parameters %}
+        .def("getTime", &{{ item.ns }}::{{ item.name }}::getTime)
         {%- endif -%}
         {% for out_port in item.out_ports %}
         .def("{{ out_port.name }}_out", &{{ item.ns }}::{{ item.name }}::{{ out_port.name }}_out)

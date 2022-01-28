@@ -47,6 +47,9 @@ namespace {{ item.ns }} {
         {% if item.commands %}
         using {{ item.name }}ComponentBase::cmdResponse_out;
         {%- endif %}
+        {% if item.commands or items.channels or items.events or item.parameters %}
+        using {{ item.name }}ComponentBase::getTime;
+        {%- endif -%}
         // Changing access modifiers for output ports
         {% for out_port in item.out_ports -%}
         using {{ item.name }}ComponentBase::{{ out_port.name }}_out;
