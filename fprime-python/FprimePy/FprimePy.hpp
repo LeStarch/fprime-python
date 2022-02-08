@@ -11,9 +11,16 @@ namespace py = pybind11;
 
 
 namespace FprimePy {
-    // Initialize the python environment
+
+class FprimePython {
+  public:
+    FprimePython();
     void initialize();
-    
-    void destroy();
+    void deinitalize();
+    ~FprimePython();
+
+  private:
+    py::gil_scoped_release* m_releaser;
+};
 }
 #endif  // PYAPP_PYINIT_HPP
